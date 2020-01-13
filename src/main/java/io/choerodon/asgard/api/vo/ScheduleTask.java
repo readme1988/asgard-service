@@ -9,6 +9,7 @@ import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModelProperty;
+import org.springframework.format.annotation.DateTimeFormat;
 
 public class ScheduleTask {
 
@@ -28,11 +29,9 @@ public class ScheduleTask {
     private String description;
 
     @ApiModelProperty(value = "定时任务开始时间")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date startTime;
 
     @ApiModelProperty(value = "定时任务结束时间")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date endTime;
 
     @ApiModelProperty(value = "定时任务结束类型。simple-trigger或cron-trigger")
@@ -54,9 +53,15 @@ public class ScheduleTask {
     @ApiModelProperty(value = "执行策略")
     private String executeStrategy;
 
+    @ApiModelProperty(value = "启用/禁用状态")
+    private String status;
+
     private NotifyUser notifyUser;
 
     private Long[] assignUserIds;
+
+    @ApiModelProperty(value = "用于feign传递时间，相差8小时,以后若解决可删除")
+    private String startTimeStr;
 
     public NotifyUser getNotifyUser() {
         return notifyUser;
@@ -170,8 +175,24 @@ public class ScheduleTask {
         this.executeStrategy = executeStrategy;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     public ScheduleTask() {
         this.methodId = 0L;
+    }
+
+    public String getStartTimeStr() {
+        return startTimeStr;
+    }
+
+    public void setStartTimeStr(String startTimeStr) {
+        this.startTimeStr = startTimeStr;
     }
 
     public ScheduleTask(Long methodId, Map<String, Object> params, String name, String description, Date startTime) {

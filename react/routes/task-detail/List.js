@@ -4,7 +4,6 @@ import { Button } from 'choerodon-ui';
 import { Modal, Table } from 'choerodon-ui/pro';
 import { FormattedMessage } from 'react-intl';
 import { Content, Header, Page, Breadcrumb, Permission, Action, axios, StatusTag, Choerodon } from '@choerodon/boot';
-import TaskDetailStore from '../../stores/global/task-detail';
 import './List.less';
 import '../../common/ConfirmModal.scss';
 import MouseOverWrapper from '../../components/mouseOverWrapper';
@@ -12,6 +11,8 @@ import MouseOverWrapper from '../../components/mouseOverWrapper';
 import Store, { StoreProvider } from './stores';
 import Create from './create';
 import Detail from './detail';
+import Executable from './executable-program';
+
 // 页面权限
 function getPermission(AppState) {
   const { type } = AppState.currentMenuType;
@@ -45,7 +46,9 @@ const { Column } = Table;
 const List = observer(() => {
   const { AppState, intl, intlPrefix, taskDataSet, taskdetail, levelType } = useContext(Store);
   const { deleteService, detailService, createService, disableService, enableService } = getPermission(AppState);
-  let createRef;
+  function getLevelType(type, id) {
+    return (type === 'site' ? '' : `/${type}s/${id}`);
+  }
   /**
    * 启停用任务
    * @param record 表格行数据
@@ -54,7 +57,8 @@ const List = observer(() => {
     const id = record.get('id');
     const objectVersionNumber = record.get('objectVersionNumber');
     const status = record.get('status') === 'ENABLE' ? 'disable' : 'enable';
-    TaskDetailStore.ableTask(id, objectVersionNumber, status, taskdetail.type, taskdetail.id).then((data) => {
+    
+    axios.put(`/asgard/v1/schedules${getLevelType(taskdetail.type, taskdetail.id)}/tasks/${id}/${status}?objectVersionNumber=${objectVersionNumber}`).then((data) => {
       if (data.failed) {
         Choerodon.prompt(data.message);
       } else {
@@ -102,7 +106,8 @@ const List = observer(() => {
       className: 'c7n-iam-confirm-modal',
       title: intl.formatMessage({ id: `${intlPrefix}.delete.title` }),
       children: intl.formatMessage({ id: `${intlPrefix}.delete.content` }, { name: record.get('name') }),
-      onOk: () => TaskDetailStore.deleteTask(record.get('id'), type, id).then(({ failed, message }) => {
+      
+      onOk: () => axios.delete(`/asgard/v1/schedules${getLevelType(type, id)}/tasks/${record.get('id')}`).then(({ failed, message }) => {
         if (failed) {
           Choerodon.prompt(message);
         } else {
@@ -123,8 +128,22 @@ const List = observer(() => {
       style: {
         width: 'calc(100% - 3.52rem)',
       },
-      footer: () => createRef && createRef.renderFooter(),
-      children: <Create forwardRef={(ref) => { createRef = ref; }} onOk={handleCreateOk} />,
+      className: 'c7n-task-create',
+      okText: '保存',
+      children: <Create onOk={handleCreateOk} />,
+    });
+  }
+
+  function openExecutableProgram() {
+    Modal.open({
+      title: '可执行程序',
+      drawer: true,
+      style: {
+        width: 'calc(100% - 3.52rem)',
+      },
+      okText: '关闭',
+      okCancel: false,
+      children: <Executable />,
     });
   }
 
@@ -202,6 +221,8 @@ const List = observer(() => {
         'asgard-service.schedule-task-instance-site.pagingQueryByTaskId',
         'asgard-service.schedule-task-instance-org.pagingQueryByTaskId',
         'asgard-service.schedule-task-instance-project.pagingQueryByTaskId',
+        'asgard-service.schedule-method-site.pagingQuery',
+        'asgard-service.schedule-method-site.getParams',
       ]}
     >
       <Header
@@ -213,6 +234,18 @@ const List = observer(() => {
             onClick={createTask}
           >
             <FormattedMessage id={`${intlPrefix}.create`} />
+          </Button>
+        </Permission>
+        <Permission service={[
+          'asgard-service.schedule-method-site.pagingQuery',
+          'asgard-service.schedule-method-site.getParams',
+        ]}
+        >
+          <Button
+            icon="classname"
+            onClick={openExecutableProgram}
+          >
+            可执行程序
           </Button>
         </Permission>
       </Header>

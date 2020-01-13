@@ -1,6 +1,8 @@
 package io.choerodon.asgard.app.service.impl;
 
 import java.io.IOException;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -9,8 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+
 import io.choerodon.asgard.api.vo.*;
 import io.choerodon.asgard.infra.enums.TriggerType;
+
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +98,12 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public QuartzTaskDTO create(final ScheduleTask dto, String level, Long sourceId) {
+        if (dto.getStartTime() == null && dto.getStartTimeStr() != null) {
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            ParsePosition pos = new ParsePosition(0);
+            Date strToDate = formatter.parse(dto.getStartTimeStr(), pos);
+            dto.setStartTime(strToDate);
+        }
         QuartzTaskDTO quartzTask = modelMapper.map(dto, QuartzTaskDTO.class);
         QuartzMethodDTO method = methodMapper.selectByPrimaryKey(dto.getMethodId());
         validatorLevelAndQuartzMethod(level, method);
@@ -104,7 +114,9 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
             quartzTask.setUserDetails(CommonUtils.getUserDetailsJson(objectMapper));
             quartzTask.setExecuteMethod(method.getCode());
             quartzTask.setId(null);
-            quartzTask.setStatus(QuartzDefinition.TaskStatus.ENABLE.name());
+            if (quartzTask.getStatus() == null || quartzTask.getStatus().equals("")) {
+                quartzTask.setStatus(QuartzDefinition.TaskStatus.ENABLE.name());
+            }
             quartzTask.setExecuteParams(objectMapper.writeValueAsString(dto.getParams()));
             quartzTask.setLevel(level);
             quartzTask.setSourceId(sourceId);
@@ -455,6 +467,7 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         query.setCode(detailDTO.getMethodCode());
         QuartzMethodDTO quartzMethod = methodMapper.selectOne(query);
         detailDTO.setMethodDescription(Optional.ofNullable(quartzMethod).map(QuartzMethodDTO::getDescription).orElse(null));
+        detailDTO.setObjectVersionNumber(quartzTask.getObjectVersionNumber());
         return detailDTO;
     }
 
